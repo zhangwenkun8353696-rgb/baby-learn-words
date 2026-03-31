@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🌸 宝宝认字乐园 🌸</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            background: #fef6f0;
+            transition: background 0.4s;
+        }
+        body.mode-game { background: #f2faf0; }
+
+        /* ============= 顶部信息条（极轻） ============= */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            gap: 6px;
+            font-size: 0.82rem;
+            color: #b08860;
+            background: rgba(255,255,255,0.6);
+            flex-shrink: 0;
+        }
+        .top-bar .star-icon { font-size: 1rem; }
+        .top-bar .star-num { font-weight: bold; font-size: 1rem; color: #e8a020; }
+        .top-bar .badges { margin-left: 4px; font-size: 0.95rem; }
+        .top-bar .progress-text { margin-left: auto; font-size: 0.78rem; color: #bba48a; }
+
+        /* 极细进度条 */
+        .progress-line {
+            height: 3px;
+            background: #f0e4d4;
+            flex-shrink: 0;
+        }
+        .progress-line-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffb74d, #ff9800);
+            transition: width 0.4s;
+            border-radius: 0 2px 2px 0;
+        }
+
+        /* ============= 主内容区（做重） ============= */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 16px 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- 学习模式 --- */
+        .learn-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        .learn-view.hidden { display: none; }
+
+        .card-emoji {
+            font-size: 7rem;
+            line-height: 1.15;
+            filter: drop-shadow(3px 5px 8px rgba(0,0,0,0.06));
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        .card-emoji:active { transform: scale(1.12) rotate(5deg); }
+        .card-emoji.bounce { animation: emojiBounce 0.45s ease; }
+        @keyframes emojiBounce {
+            0% { transform: scale(0.85) rotate(-3deg); }
+            50% { transform: scale(1.08) rotate(2deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
+        .card-hanzi {
+            font-size: 5.5rem;
+            font-weight: 900;
+            color: #4a2c0a;
+            margin: 10px 0 8px;
+            letter-spacing: 2px;
+            text-shadow: 0 3px 0 #e8cfb0;
+            transition: transform 0.2s;
+        }
+
+        .speak-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 32px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #ffb74d, #ffa726);
+            color: #5c2e0e;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #e08a1e;
+            transition: all 0.08s;
+            font-family: inherit;
+            margin-top: 4px;
+        }
+        .speak-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #e08a1e; }
+
+        .nav-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 14px;
+            width: 100%;
+            max-width: 320px;
+        }
+        .nav-btn {
+            flex: 1;
+            padding: 10px 0;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 16px;
+            background: #fff;
+            color: #a06830;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            font-family: inherit;
+            transition: all 0.08s;
+        }
+        .nav-btn:active { transform: scale(0.96); background: #fff5eb; }
+
+        /* 跳转（更轻量） */
+        .jump-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: #b08860;
+        }
+        .jump-input {
+            width: 50px;
+            font-size: 0.95rem;
+            text-align: center;
+            padding: 4px;
+            border-radius: 12px;
+            border: 1.5px solid #e0cbb0;
+            background: #fff;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        .jump-go {
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            border: none;
+            border-radius: 12px;
+            background: #ffe0b2;
+            color: #8d5e2a;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* --- 游戏模式 --- */
+        .game-view {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        .game-view.active { display: flex; }
+
+        .game-hint {
+            font-size: 1rem;
+            color: #6a994e;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .game-emoji-big {
+            font-size: 7rem;
+            line-height: 1.15;
+            filter: drop-shadow(3px 5px 8px rgba(0,0,0,0.06));
+            animation: gentleBob 2.5s ease-in-out infinite;
+        }
+        @keyframes gentleBob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .choices {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+        }
+        .choice-btn {
+            font-size: 3.2rem;
+            font-weight: 900;
+            width: 88px;
+            height: 88px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 22px;
+            border: 3px solid #d4edda;
+            background: #fff;
+            color: #2d5016;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #a5d6a7;
+            transition: all 0.12s;
+            font-family: inherit;
+        }
+        .choice-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a5d6a7; }
+        .choice-btn.correct {
+            background: #66bb6a; color: #fff; border-color: #43a047;
+            animation: correctPop 0.5s ease;
+            box-shadow: 0 4px 0 #2e7d32, 0 0 24px rgba(102,187,106,0.35);
+        }
+        @keyframes correctPop {
+            0% { transform: scale(1); }
+            35% { transform: scale(1.2) rotate(-3deg); }
+            65% { transform: scale(0.95) rotate(2deg); }
+            100% { transform: scale(1.05); }
+        }
+        .choice-btn.wrong {
+            animation: wrongShake 0.4s ease;
+            border-color: #ffe0b2; background: #fffde7;
+        }
+        @keyframes wrongShake {
+            0%,100% { transform: translateX(0); }
+            20% { transform: translateX(-7px); }
+            40% { transform: translateX(7px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+
+        /* ============= 答对浮层 ============= */
+        .success-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.94);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+        .success-overlay.show { display: flex; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .suc-emoji { font-size: 4.5rem; animation: sucBounce 0.6s ease infinite alternate; }
+        @keyframes sucBounce { from { transform: translateY(0) scale(1); } to { transform: translateY(-10px) scale(1.08); } }
+        .suc-star { font-size: 2.5rem; margin: 4px 0; animation: starSpin 0.8s ease; }
+        @keyframes starSpin { from { transform: rotate(0) scale(0); } 60% { transform: rotate(220deg) scale(1.2); } to { transform: rotate(360deg) scale(1); } }
+        .suc-text { font-size: 1.6rem; font-weight: bold; color: #e65100; margin: 4px 0; }
+        .suc-sub { font-size: 1rem; color: #8d6e63; margin-bottom: 10px; }
+        .suc-next {
+            padding: 12px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #ff9800, #ff6d00);
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #bf360c;
+            font-family: inherit;
+        }
+        .suc-next:active { transform: translateY(3px); box-shadow: 0 1px 0 #bf360c; }
+
+        /* ============= 鼓励条 ============= */
+        .cheer-bar {
+            flex-shrink: 0;
+            text-align: center;
+            padding: 6px 14px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #d4790a;
+            background: rgba(255,243,220,0.85);
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        /* ============= 连击徽章 ============= */
+        .combo-float {
+            position: fixed;
+            top: 50px;
+            right: 12px;
+            background: linear-gradient(135deg, #ff6f00, #ff8f00);
+            color: #fff;
+            padding: 5px 14px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: none;
+            z-index: 30;
+            animation: comboIn 0.3s ease;
+        }
+        .combo-float.show { display: block; }
+        @keyframes comboIn { from { transform: scale(0) rotate(-10deg); } to { transform: scale(1) rotate(0); } }
+
+        /* ============= 底部 Tab 栏 ============= */
+        .tab-bar {
+            flex-shrink: 0;
+            display: flex;
+            background: #fff;
+            border-top: 1px solid #f0e8e0;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 0 6px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            color: #bba48a;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            position: relative;
+        }
+        .tab-item .tab-icon { font-size: 1.5rem; margin-bottom: 2px; }
+        .tab-item.active { color: #e8875b; }
+        .tab-item.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 30%;
+            right: 30%;
+            height: 2.5px;
+            background: #e8875b;
+            border-radius: 0 0 2px 2px;
+        }
+        .tab-item.active.tab-game { color: #4caf50; }
+        .tab-item.active.tab-game::after { background: #4caf50; }
+
+        /* ============= 飘浮 & 烟花 ============= */
+        .floating-item {
+            position: fixed;
+            pointer-events: none;
+            font-size: 2rem;
+            z-index: 100;
+            animation: floatUp 1.1s ease-out forwards;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(0.5); }
+            50% { opacity: 1; transform: translateY(-50px) scale(1.15); }
+            100% { opacity: 0; transform: translateY(-120px) scale(0.7); }
+        }
+        .firework {
+            position: fixed;
+            pointer-events: none;
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            z-index: 99;
+            animation: fwBurst 0.7s ease-out forwards;
+        }
+        @keyframes fwBurst {
+            0% { opacity: 1; transform: translate(0,0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="mode-learn">
+
+<!-- 连击 -->
+<div class="combo-float" id="comboBadge">🔥 连对 3 个!</div>
+
+<!-- 顶部信息条 -->
+<div class="top-bar">
+    <span class="star-icon">⭐</span>
+    <span class="star-num" id="starCount">0</span>
+    <span class="badges" id="badgeArea"></span>
+    <span class="progress-text" id="progressText">1 / 100</span>
+</div>
+<div class="progress-line">
+    <div class="progress-line-fill" id="progressFill" style="width:1%"></div>
+</div>
+
+<!-- 主内容 -->
+<div class="main-area">
+    <!-- 学习 -->
+    <div class="learn-view" id="learnView">
+        <div class="card-emoji" id="learnEmoji">🌸</div>
+        <div class="card-hanzi" id="learnHanzi">花</div>
+        <button class="speak-btn" id="speakBtn">🔊 读一读</button>
+        <div class="nav-row">
+            <button class="nav-btn" id="prevBtn">⬅ 上一个</button>
+            <button class="nav-btn" id="nextBtn">下一个 ➡</button>
+        </div>
+        <div class="jump-row">
+            <span>跳到第</span>
+            <input type="number" id="jumpInput" class="jump-input" min="1" max="100" value="1">
+            <span>个</span>
+            <button class="jump-go" id="jumpBtn">GO</button>
+        </div>
+    </div>
+
+    <!-- 游戏 -->
+    <div class="game-view" id="gameView">
+        <div class="game-hint" id="gameHint">👆 这是哪个字？</div>
+        <div class="game-emoji-big" id="gameEmoji">🌸</div>
+        <div class="choices" id="choicesArea"></div>
+    </div>
+
+    <!-- 答对浮层 -->
+    <div class="success-overlay" id="successOverlay">
+        <div class="suc-emoji" id="sucEmoji">🎉</div>
+        <div class="suc-star">⭐</div>
+        <div class="suc-text" id="sucText">太棒了！</div>
+        <div class="suc-sub" id="sucSub">你认出了「花」</div>
+        <button class="suc-next" id="sucNext">👉 下一题</button>
+    </div>
+</div>
+
+<!-- 鼓励条 -->
+<div class="cheer-bar" id="cheerBar">🌸 点击「读一读」听发音 🎀</div>
+
+<!-- 底部 Tab -->
+<div class="tab-bar">
+    <button class="tab-item tab-learn active" id="tabLearn">
+        <span class="tab-icon">📖</span>
+        学一学
+    </button>
+    <button class="tab-item tab-game" id="tabGame">
+        <span class="tab-icon">🎮</span>
+        玩一玩
+    </button>
+</div>
+
+<script>
+    // ===================== 字库 =====================
+    const words = [
+        { hanzi: "花", emoji: "🌸" }, { hanzi: "猫", emoji: "🐱" },
+        { hanzi: "兔", emoji: "🐰" }, { hanzi: "星", emoji: "⭐" },
+        { hanzi: "心", emoji: "❤️" }, { hanzi: "裙", emoji: "👗" },
+        { hanzi: "妈", emoji: "👩" }, { hanzi: "爸", emoji: "👨" },
+        { hanzi: "哥", emoji: "🧒" }, { hanzi: "姐", emoji: "👧" },
+        { hanzi: "奶", emoji: "👵" }, { hanzi: "爷", emoji: "👴" },
+        { hanzi: "宝", emoji: "🍼" }, { hanzi: "贝", emoji: "🐚" },
+        { hanzi: "大", emoji: "🐘" }, { hanzi: "小", emoji: "🐭" },
+        { hanzi: "多", emoji: "🍬" }, { hanzi: "少", emoji: "🥄" },
+        { hanzi: "上", emoji: "☝️" }, { hanzi: "下", emoji: "👇" },
+        { hanzi: "天", emoji: "☀️" }, { hanzi: "地", emoji: "🌍" },
+        { hanzi: "日", emoji: "🌞" }, { hanzi: "月", emoji: "🌙" },
+        { hanzi: "云", emoji: "☁️" }, { hanzi: "雨", emoji: "☔" },
+        { hanzi: "风", emoji: "💨" }, { hanzi: "雪", emoji: "❄️" },
+        { hanzi: "树", emoji: "🌳" }, { hanzi: "叶", emoji: "🍃" },
+        { hanzi: "草", emoji: "🌿" }, { hanzi: "花", emoji: "🌻" },
+        { hanzi: "鸟", emoji: "🐦" }, { hanzi: "鱼", emoji: "🐟" },
+        { hanzi: "虫", emoji: "🐛" }, { hanzi: "马", emoji: "🐴" },
+        { hanzi: "牛", emoji: "🐮" }, { hanzi: "羊", emoji: "🐑" },
+        { hanzi: "鸡", emoji: "🐔" }, { hanzi: "鸭", emoji: "🦆" },
+        { hanzi: "狗", emoji: "🐶" }, { hanzi: "猪", emoji: "🐷" },
+        { hanzi: "熊", emoji: "🐻" }, { hanzi: "虎", emoji: "🐯" },
+        { hanzi: "狮", emoji: "🦁" }, { hanzi: "猴", emoji: "🐒" },
+        { hanzi: "糖", emoji: "🍭" }, { hanzi: "果", emoji: "🍎" },
+        { hanzi: "糕", emoji: "🍰" }, { hanzi: "奶", emoji: "🥛" },
+        { hanzi: "水", emoji: "💧" }, { hanzi: "饭", emoji: "🍚" },
+        { hanzi: "菜", emoji: "🥬" }, { hanzi: "肉", emoji: "🍗" },
+        { hanzi: "红", emoji: "🔴" }, { hanzi: "黄", emoji: "🟡" },
+        { hanzi: "蓝", emoji: "🔵" }, { hanzi: "绿", emoji: "🟢" },
+        { hanzi: "粉", emoji: "🌸" }, { hanzi: "紫", emoji: "🟣" },
+        { hanzi: "开", emoji: "🚪" }, { hanzi: "关", emoji: "🔒" },
+        { hanzi: "走", emoji: "🚶" }, { hanzi: "跑", emoji: "🏃" },
+        { hanzi: "跳", emoji: "🦘" }, { hanzi: "笑", emoji: "😊" },
+        { hanzi: "哭", emoji: "😢" }, { hanzi: "爱", emoji: "💕" },
+        { hanzi: "好", emoji: "👍" }, { hanzi: "坏", emoji: "👎" },
+        { hanzi: "高", emoji: "🦒" }, { hanzi: "矮", emoji: "🐧" },
+        { hanzi: "快", emoji: "🐆" }, { hanzi: "慢", emoji: "🐢" },
+        { hanzi: "新", emoji: "🎁" }, { hanzi: "旧", emoji: "📦" },
+        { hanzi: "热", emoji: "🔥" }, { hanzi: "冷", emoji: "❄️" },
+        { hanzi: "一", emoji: "1️⃣" }, { hanzi: "二", emoji: "2️⃣" },
+        { hanzi: "三", emoji: "3️⃣" }, { hanzi: "四", emoji: "4️⃣" },
+        { hanzi: "五", emoji: "5️⃣" }, { hanzi: "六", emoji: "6️⃣" },
+        { hanzi: "七", emoji: "7️⃣" }, { hanzi: "八", emoji: "8️⃣" },
+        { hanzi: "九", emoji: "9️⃣" }, { hanzi: "十", emoji: "🔟" },
+        { hanzi: "个", emoji: "🍎" }, { hanzi: "只", emoji: "🐱" },
+        { hanzi: "头", emoji: "🐮" }, { hanzi: "本", emoji: "📖" },
+        { hanzi: "笔", emoji: "✏️" }, { hanzi: "车", emoji: "🚗" },
+        { hanzi: "球", emoji: "⚽" }, { hanzi: "娃", emoji: "🎎" },
+        { hanzi: "书", emoji: "📚" }, { hanzi: "画", emoji: "🎨" },
+        { hanzi: "唱", emoji: "🎤" }, { hanzi: "舞", emoji: "💃" }
+    ];
+    if (words.length > 100) words.length = 100;
+    while (words.length < 100) words.push({ hanzi: "宝", emoji: "🌸" });
+    const totalWords = words.length;
+
+    // ===================== 状态 =====================
+    let mode = 'learn';
+    let learnIdx = 0;
+    let gameIdx = 0;
+    let stars = 0;
+    let combo = 0;
+    let badges = [];
+    let gameAnswered = false;
+
+    // ===================== 语音：优先 Audio API（兼容夸克），回退 SpeechSynthesis =====================
+    // 使用有道 TTS 作为音频源，几乎所有浏览器都支持 Audio 播放 mp3
+    let audioPlayer = null;
+    function speakWord(text) {
+        try {
+            // 方案1: 在线 TTS（mp3直链，夸克/UC/Safari/Chrome 通用）
+            const url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=0';
+            if (!audioPlayer) {
+                audioPlayer = new Audio();
+            }
+            audioPlayer.src = url;
+            audioPlayer.play().catch(() => {
+                // 方案2: 回退到 SpeechSynthesis
+                fallbackSpeak(text);
+            });
+        } catch (e) {
+            fallbackSpeak(text);
+        }
+    }
+    function fallbackSpeak(text) {
+        const synth = window.speechSynthesis;
+        if (!synth) return;
+        synth.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN';
+        u.rate = 0.78;
+        u.pitch = 1.3;
+        synth.speak(u);
+    }
+
+    // ===================== 鼓励语 =====================
+    const cheersCorrect = [
+        "哇！太厉害了！🌟", "宝宝真棒！👏", "答对啦！小天才！🧠",
+        "太聪明了！🎉", "好厉害呀！💪", "一下就认出来了！🤩",
+        "真了不起！🥰", "太太太棒啦！🌈", "认字小达人！🏆",
+        "你做到了！🥳", "好厉害呀宝宝！❤️", "完美！💯"
+    ];
+    const cheersWrong = [
+        "没关系，再试试！💪", "差一点点，加油！🤗", "再看看？你可以的！🌸",
+        "想一想，慢慢来～😊", "不着急，再试一次！💕", "仔细看看哦～🧐"
+    ];
+    const cheersCombo = [
+        "连续答对！太强了！🔥", "连对了好多！超厉害！⚡",
+        "连击！你最棒！🚀", "停不下来！大王！👑"
+    ];
+    function randPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    // ===================== DOM =====================
+    const $ = id => document.getElementById(id);
+    const learnView = $('learnView');
+    const gameView = $('gameView');
+    const tabLearn = $('tabLearn');
+    const tabGame = $('tabGame');
+    const learnEmoji = $('learnEmoji');
+    const learnHanzi = $('learnHanzi');
+    const speakBtn = $('speakBtn');
+    const prevBtn = $('prevBtn');
+    const nextBtn = $('nextBtn');
+    const jumpInput = $('jumpInput');
+    const jumpBtn = $('jumpBtn');
+    const gameEmoji = $('gameEmoji');
+    const gameHint = $('gameHint');
+    const choicesArea = $('choicesArea');
+    const successOverlay = $('successOverlay');
+    const sucEmoji = $('sucEmoji');
+    const sucText = $('sucText');
+    const sucSub = $('sucSub');
+    const sucNext = $('sucNext');
+    const progressFill = $('progressFill');
+    const progressText = $('progressText');
+    const cheerBar = $('cheerBar');
+    const starCountEl = $('starCount');
+    const badgeArea = $('badgeArea');
+    const comboBadge = $('comboBadge');
+
+    // ===================== Tab 切换 =====================
+    function switchMode(m) {
+        mode = m;
+        if (m === 'learn') {
+            learnView.classList.remove('hidden');
+            learnView.style.display = 'flex';
+            gameView.classList.remove('active');
+            gameView.style.display = 'none';
+            tabLearn.classList.add('active');
+            tabGame.classList.remove('active');
+            document.body.className = 'mode-learn';
+            updateLearn();
+        } else {
+            learnView.style.display = 'none';
+            gameView.style.display = 'flex';
+            gameView.classList.add('active');
+            tabGame.classList.add('active');
+            tabLearn.classList.remove('active');
+            document.body.className = 'mode-game';
+            loadQuestion();
+        }
+    }
+    tabLearn.addEventListener('click', () => switchMode('learn'));
+    tabGame.addEventListener('click', () => switchMode('game'));
+
+    // ===================== 学习模式 =====================
+    function updateLearn() {
+        const w = words[learnIdx];
+        learnEmoji.textContent = w.emoji;
+        learnHanzi.textContent = w.hanzi;
+        learnEmoji.classList.remove('bounce');
+        void learnEmoji.offsetWidth;
+        learnEmoji.classList.add('bounce');
+        updateProgress(learnIdx);
+        showCheer("🌸 " + w.hanzi + "！认一认这个字");
+    }
+
+    speakBtn.addEventListener('click', () => {
+        const w = words[learnIdx];
+        speakWord(w.hanzi);
+        showCheer("🔊 " + w.hanzi + "！宝宝跟我读～");
+        spawnFloating(2);
+    });
+    prevBtn.addEventListener('click', () => { learnIdx = (learnIdx - 1 + totalWords) % totalWords; updateLearn(); });
+    nextBtn.addEventListener('click', () => { learnIdx = (learnIdx + 1) % totalWords; updateLearn(); });
+    jumpBtn.addEventListener('click', () => {
+        let n = parseInt(jumpInput.value, 10);
+        if (isNaN(n)) n = 1;
+        n = Math.min(totalWords, Math.max(1, n));
+        learnIdx = n - 1;
+        updateLearn();
+    });
+
+    // ===================== 游戏模式 =====================
+    let gameQueue = [];
+    function shuffleQueue() {
+        gameQueue = Array.from({ length: totalWords }, (_, i) => i);
+        for (let i = gameQueue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [gameQueue[i], gameQueue[j]] = [gameQueue[j], gameQueue[i]];
+        }
+        gameIdx = 0;
+    }
+    shuffleQueue();
+
+    function loadQuestion() {
+        if (gameIdx >= gameQueue.length) shuffleQueue();
+        gameAnswered = false;
+        const target = words[gameQueue[gameIdx]];
+        gameEmoji.textContent = target.emoji;
+        gameHint.textContent = "👆 这是哪个字？";
+
+        const allH = [...new Set(words.map(w => w.hanzi))];
+        const dist = [];
+        while (dist.length < 2) {
+            const r = allH[Math.floor(Math.random() * allH.length)];
+            if (r !== target.hanzi && !dist.includes(r)) dist.push(r);
+        }
+        const opts = [target.hanzi, ...dist];
+        for (let i = opts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [opts[i], opts[j]] = [opts[j], opts[i]];
+        }
+
+        choicesArea.innerHTML = '';
+        opts.forEach(hz => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = hz;
+            btn.addEventListener('click', () => onChoice(btn, hz, target));
+            choicesArea.appendChild(btn);
+        });
+
+        updateProgress(gameQueue[gameIdx]);
+        showCheer("👆 看看图，找到对的字！");
+        setTimeout(() => speakWord(target.hanzi), 350);
+    }
+
+    function onChoice(btn, chosen, target) {
+        if (gameAnswered) return;
+        if (chosen === target.hanzi) {
+            gameAnswered = true;
+            btn.classList.add('correct');
+            combo++;
+            addStar();
+            speakWord(target.hanzi);
+            launchFireworks(6);
+            spawnFloating(5);
+            if (combo >= 3) {
+                comboBadge.textContent = "🔥 连对 " + combo + " 个!";
+                comboBadge.classList.add('show');
+                setTimeout(() => comboBadge.classList.remove('show'), 2000);
+            }
+            setTimeout(() => showSuccess(target), 450);
+        } else {
+            btn.classList.add('wrong');
+            combo = 0;
+            comboBadge.classList.remove('show');
+            showCheer(randPick(cheersWrong));
+            speakWord("再试试");
+            setTimeout(() => btn.classList.remove('wrong'), 450);
+        }
+    }
+
+    function showSuccess(target) {
+        const emojis = ["🎉", "🥳", "🌟", "🏆", "🎊", "💫", "🦄", "🌈"];
+        sucEmoji.textContent = randPick(emojis);
+        sucText.textContent = combo >= 3 ? randPick(cheersCombo) : randPick(cheersCorrect);
+        sucSub.textContent = "你认出了「" + target.hanzi + "」";
+        successOverlay.classList.add('show');
+    }
+    sucNext.addEventListener('click', () => {
+        successOverlay.classList.remove('show');
+        gameIdx++;
+        loadQuestion();
+    });
+
+    // ===================== 星星 & 勋章 =====================
+    function addStar() {
+        stars++;
+        starCountEl.textContent = stars;
+        starCountEl.style.transform = 'scale(1.5)';
+        setTimeout(() => starCountEl.style.transform = 'scale(1)', 250);
+        if (stars % 5 === 0) {
+            const bList = ["🏅", "🎖️", "👑", "💎", "🦋", "🌈", "🎯", "🚀", "🌺", "🎪"];
+            const b = bList[Math.min(badges.length, bList.length - 1)];
+            badges.push(b);
+            badgeArea.textContent = badges.join('');
+            setTimeout(() => {
+                showCheer("🏅 获得新勋章 " + b + " ！太厉害了！");
+                launchFireworks(10);
+                speakWord("恭喜获得新勋章");
+            }, 600);
+        }
+    }
+
+    // ===================== 进度 & 鼓励 =====================
+    function updateProgress(idx) {
+        const pct = Math.max(1, ((idx + 1) / totalWords) * 100);
+        progressFill.style.width = pct + '%';
+        progressText.textContent = (idx + 1) + " / " + totalWords;
+    }
+    function showCheer(msg) {
+        cheerBar.textContent = msg;
+        cheerBar.style.transform = 'scale(1.03)';
+        setTimeout(() => cheerBar.style.transform = 'scale(1)', 180);
+    }
+
+    // ===================== 特效 =====================
+    function spawnFloating(n) {
+        const items = ["💖", "🌸", "⭐", "💗", "🐰", "🦄", "🎀", "🌟", "✨", "🎉", "💫"];
+        for (let i = 0; i < n; i++) {
+            const el = document.createElement('div');
+            el.className = 'floating-item';
+            el.textContent = randPick(items);
+            el.style.left = (Math.random() * (window.innerWidth - 36) + 18) + 'px';
+            el.style.top = (window.innerHeight * 0.6 + Math.random() * 80) + 'px';
+            el.style.animationDelay = (Math.random() * 0.25) + 's';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1200);
+        }
+    }
+    function launchFireworks(n) {
+        const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6eb4', '#a855f7', '#ff9f43'];
+        const cx = window.innerWidth / 2, cy = window.innerHeight * 0.4;
+        for (let i = 0; i < n; i++) {
+            const d = document.createElement('div');
+            d.className = 'firework';
+            d.style.background = randPick(colors);
+            d.style.left = cx + 'px';
+            d.style.top = cy + 'px';
+            const a = (Math.PI * 2 / n) * i + Math.random() * 0.4;
+            const dist = 50 + Math.random() * 80;
+            d.style.setProperty('--tx', Math.cos(a) * dist + 'px');
+            d.style.setProperty('--ty', Math.sin(a) * dist + 'px');
+            document.body.appendChild(d);
+            setTimeout(() => d.remove(), 800);
+        }
+    }
+
+    // ===================== 触摸滑动（学习模式） =====================
+    let touchX = 0;
+    document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend', e => {
+        if (mode !== 'learn') return;
+        const d = e.changedTouches[0].clientX - touchX;
+        if (Math.abs(d) > 55) {
+            learnIdx = d > 0 ? (learnIdx - 1 + totalWords) % totalWords : (learnIdx + 1) % totalWords;
+            updateLearn();
+        }
+    }, { passive: true });
+
+    // ===================== 初始化 =====================
+    updateLearn();
+    // 预热音频（夸克等浏览器需要用户交互后才能播放）
+    document.addEventListener('touchstart', function warmUp() {
+        if (!audioPlayer) audioPlayer = new Audio();
+        audioPlayer.play().catch(() => {});
+        audioPlayer.pause();
+        document.removeEventListener('touchstart', warmUp);
+    }, { once: true });
+</script>
+</body>
+</html>
