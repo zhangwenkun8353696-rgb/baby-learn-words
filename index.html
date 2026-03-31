@@ -383,6 +383,9 @@
 </head>
 <body class="mode-learn">
 
+<!-- 预埋 audio 标签（微信兼容关键） -->
+<audio id="ttsAudio" preload="auto" playsinline webkit-playsinline></audio>
+
 <!-- 连击 -->
 <div class="combo-float" id="comboBadge">🔥 连对 3 个!</div>
 
@@ -450,7 +453,7 @@
 </div>
 
 <script>
-    // ===================== 字库 =====================
+    // ===================== 字库（去重+字图精准匹配） =====================
     const words = [
         { hanzi: "花", emoji: "🌸" }, { hanzi: "猫", emoji: "🐱" },
         { hanzi: "兔", emoji: "🐰" }, { hanzi: "星", emoji: "⭐" },
@@ -458,7 +461,7 @@
         { hanzi: "妈", emoji: "👩" }, { hanzi: "爸", emoji: "👨" },
         { hanzi: "哥", emoji: "🧒" }, { hanzi: "姐", emoji: "👧" },
         { hanzi: "奶", emoji: "👵" }, { hanzi: "爷", emoji: "👴" },
-        { hanzi: "宝", emoji: "🍼" }, { hanzi: "贝", emoji: "🐚" },
+        { hanzi: "宝", emoji: "👶" }, { hanzi: "贝", emoji: "🐚" },
         { hanzi: "大", emoji: "🐘" }, { hanzi: "小", emoji: "🐭" },
         { hanzi: "多", emoji: "🍬" }, { hanzi: "少", emoji: "🥄" },
         { hanzi: "上", emoji: "☝️" }, { hanzi: "下", emoji: "👇" },
@@ -467,7 +470,7 @@
         { hanzi: "云", emoji: "☁️" }, { hanzi: "雨", emoji: "☔" },
         { hanzi: "风", emoji: "💨" }, { hanzi: "雪", emoji: "❄️" },
         { hanzi: "树", emoji: "🌳" }, { hanzi: "叶", emoji: "🍃" },
-        { hanzi: "草", emoji: "🌿" }, { hanzi: "花", emoji: "🌻" },
+        { hanzi: "草", emoji: "🌿" }, { hanzi: "果", emoji: "🍎" },
         { hanzi: "鸟", emoji: "🐦" }, { hanzi: "鱼", emoji: "🐟" },
         { hanzi: "虫", emoji: "🐛" }, { hanzi: "马", emoji: "🐴" },
         { hanzi: "牛", emoji: "🐮" }, { hanzi: "羊", emoji: "🐑" },
@@ -475,33 +478,35 @@
         { hanzi: "狗", emoji: "🐶" }, { hanzi: "猪", emoji: "🐷" },
         { hanzi: "熊", emoji: "🐻" }, { hanzi: "虎", emoji: "🐯" },
         { hanzi: "狮", emoji: "🦁" }, { hanzi: "猴", emoji: "🐒" },
-        { hanzi: "糖", emoji: "🍭" }, { hanzi: "果", emoji: "🍎" },
-        { hanzi: "糕", emoji: "🍰" }, { hanzi: "奶", emoji: "🥛" },
-        { hanzi: "水", emoji: "💧" }, { hanzi: "饭", emoji: "🍚" },
-        { hanzi: "菜", emoji: "🥬" }, { hanzi: "肉", emoji: "🍗" },
-        { hanzi: "红", emoji: "🔴" }, { hanzi: "黄", emoji: "🟡" },
-        { hanzi: "蓝", emoji: "🔵" }, { hanzi: "绿", emoji: "🟢" },
-        { hanzi: "粉", emoji: "🌸" }, { hanzi: "紫", emoji: "🟣" },
-        { hanzi: "开", emoji: "🚪" }, { hanzi: "关", emoji: "🔒" },
-        { hanzi: "走", emoji: "🚶" }, { hanzi: "跑", emoji: "🏃" },
-        { hanzi: "跳", emoji: "🦘" }, { hanzi: "笑", emoji: "😊" },
-        { hanzi: "哭", emoji: "😢" }, { hanzi: "爱", emoji: "💕" },
-        { hanzi: "好", emoji: "👍" }, { hanzi: "坏", emoji: "👎" },
-        { hanzi: "高", emoji: "🦒" }, { hanzi: "矮", emoji: "🐧" },
-        { hanzi: "快", emoji: "🐆" }, { hanzi: "慢", emoji: "🐢" },
-        { hanzi: "新", emoji: "🎁" }, { hanzi: "旧", emoji: "📦" },
-        { hanzi: "热", emoji: "🔥" }, { hanzi: "冷", emoji: "❄️" },
-        { hanzi: "一", emoji: "1️⃣" }, { hanzi: "二", emoji: "2️⃣" },
-        { hanzi: "三", emoji: "3️⃣" }, { hanzi: "四", emoji: "4️⃣" },
-        { hanzi: "五", emoji: "5️⃣" }, { hanzi: "六", emoji: "6️⃣" },
-        { hanzi: "七", emoji: "7️⃣" }, { hanzi: "八", emoji: "8️⃣" },
-        { hanzi: "九", emoji: "9️⃣" }, { hanzi: "十", emoji: "🔟" },
-        { hanzi: "个", emoji: "🍎" }, { hanzi: "只", emoji: "🐱" },
-        { hanzi: "头", emoji: "🐮" }, { hanzi: "本", emoji: "📖" },
+        { hanzi: "糖", emoji: "🍭" }, { hanzi: "糕", emoji: "🍰" },
+        { hanzi: "奶", emoji: "🥛" }, { hanzi: "水", emoji: "💧" },
+        { hanzi: "饭", emoji: "🍚" }, { hanzi: "菜", emoji: "🥬" },
+        { hanzi: "肉", emoji: "🍗" }, { hanzi: "红", emoji: "🔴" },
+        { hanzi: "黄", emoji: "🟡" }, { hanzi: "蓝", emoji: "🔵" },
+        { hanzi: "绿", emoji: "🟢" }, { hanzi: "粉", emoji: "💗" },
+        { hanzi: "紫", emoji: "🟣" }, { hanzi: "开", emoji: "🚪" },
+        { hanzi: "关", emoji: "🔒" }, { hanzi: "走", emoji: "🚶" },
+        { hanzi: "跑", emoji: "🏃" }, { hanzi: "跳", emoji: "🦘" },
+        { hanzi: "笑", emoji: "😊" }, { hanzi: "哭", emoji: "😢" },
+        { hanzi: "爱", emoji: "💕" }, { hanzi: "好", emoji: "👍" },
+        { hanzi: "坏", emoji: "👎" }, { hanzi: "高", emoji: "🦒" },
+        { hanzi: "矮", emoji: "🐧" }, { hanzi: "快", emoji: "🐆" },
+        { hanzi: "慢", emoji: "🐢" }, { hanzi: "新", emoji: "🎁" },
+        { hanzi: "旧", emoji: "📦" }, { hanzi: "热", emoji: "🔥" },
+        { hanzi: "冷", emoji: "🧊" }, { hanzi: "一", emoji: "1️⃣" },
+        { hanzi: "二", emoji: "2️⃣" }, { hanzi: "三", emoji: "3️⃣" },
+        { hanzi: "四", emoji: "4️⃣" }, { hanzi: "五", emoji: "5️⃣" },
+        { hanzi: "六", emoji: "6️⃣" }, { hanzi: "七", emoji: "7️⃣" },
+        { hanzi: "八", emoji: "8️⃣" }, { hanzi: "九", emoji: "9️⃣" },
+        { hanzi: "十", emoji: "🔟" }, { hanzi: "手", emoji: "🖐️" },
+        { hanzi: "口", emoji: "👄" }, { hanzi: "目", emoji: "👁️" },
+        { hanzi: "耳", emoji: "👂" }, { hanzi: "足", emoji: "🦶" },
         { hanzi: "笔", emoji: "✏️" }, { hanzi: "车", emoji: "🚗" },
         { hanzi: "球", emoji: "⚽" }, { hanzi: "娃", emoji: "🎎" },
         { hanzi: "书", emoji: "📚" }, { hanzi: "画", emoji: "🎨" },
-        { hanzi: "唱", emoji: "🎤" }, { hanzi: "舞", emoji: "💃" }
+        { hanzi: "唱", emoji: "🎤" }, { hanzi: "舞", emoji: "💃" },
+        { hanzi: "吃", emoji: "🍽️" }, { hanzi: "喝", emoji: "🥤" },
+        { hanzi: "睡", emoji: "😴" }, { hanzi: "坐", emoji: "🪑" }
     ];
     if (words.length > 100) words.length = 100;
     while (words.length < 100) words.push({ hanzi: "宝", emoji: "🌸" });
@@ -516,99 +521,65 @@
     let badges = [];
     let gameAnswered = false;
 
-    // ===================== 语音引擎（华为微信/夸克/UC/Safari/Chrome 全兼容） =====================
+    // ===================== 语音引擎（参考 elsa-math-game，全平台兼容） =====================
     //
-    // 关键发现：华为+微信 X5 内核会拦截跨域 Audio 和异步回调中的 SpeechSynthesis。
-    // 解法：在用户手势的同步调用栈中直接触发 SpeechSynthesis。
-    //
-    // 策略：
-    //   微信环境 → 直接 SpeechSynthesis（同步，不经过 Audio）
-    //   其他环境 → 先试 Audio（有道TTS），失败则 SpeechSynthesis
+    // 核心方案：使用页面内 <audio> 标签 + 有道 TTS
+    // 为什么能在微信工作：
+    //   1. <audio> 标签已在 DOM 中，不是动态 new Audio()
+    //   2. 用户首次点击时通过 audio.play() 解锁
+    //   3. 后续所有播放复用同一个 <audio> 标签
+    // 兜底：SpeechSynthesis（PC浏览器等）
     //
 
-    const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+    const ttsAudio = document.getElementById('ttsAudio');
+    let audioUnlocked = false;
 
-    // SpeechSynthesis 朗读（同步调用，必须在用户手势栈内）
+    // 用户首次交互时解锁 audio 播放权限
+    function unlockAudioPlayback() {
+        if (audioUnlocked) return;
+        audioUnlocked = true;
+        // 播放一段空白音频来解锁
+        ttsAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+        ttsAudio.play().then(() => { ttsAudio.pause(); }).catch(() => {});
+        // 同时预热 SpeechSynthesis
+        if (window.speechSynthesis) {
+            const u = new SpeechSynthesisUtterance('');
+            u.volume = 0;
+            u.lang = 'zh-CN';
+            try { speechSynthesis.speak(u); } catch(e) {}
+        }
+    }
+    ['touchstart', 'click'].forEach(e => {
+        document.addEventListener(e, unlockAudioPlayback, { once: true, passive: true });
+    });
+
+    // 播放语音
+    function speakWord(text) {
+        // 方案1：用 <audio> 标签播放有道 TTS
+        try {
+            const url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=0';
+            ttsAudio.pause();
+            ttsAudio.currentTime = 0;
+            ttsAudio.src = url;
+            ttsAudio.play().catch(() => {
+                // 方案2：SpeechSynthesis（同步调用，在手势栈内）
+                synthSpeak(text);
+            });
+        } catch(e) {
+            synthSpeak(text);
+        }
+    }
+
     function synthSpeak(text) {
         const synth = window.speechSynthesis;
-        if (!synth) return false;
+        if (!synth) return;
         synth.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'zh-CN';
         u.rate = 0.78;
         u.pitch = 1.3;
-        // 华为部分机型需要先 getVoices
-        if (synth.getVoices().length === 0) {
-            synth.onvoiceschanged = () => {};
-        }
         synth.speak(u);
-        return true;
     }
-
-    // Audio 朗读（在线 TTS）
-    let _audio = null;
-    function audioSpeak(text) {
-        try {
-            const url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=0';
-            if (!_audio) _audio = new Audio();
-            _audio.pause();
-            _audio.currentTime = 0;
-            _audio.src = url;
-            const p = _audio.play();
-            if (p && p.then) {
-                p.catch(() => {
-                    // Audio 失败不再回退（已经脱离手势上下文）
-                });
-            }
-            return true;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    // 统一播放入口
-    function speakWord(text) {
-        if (isWeChat) {
-            // 微信：直接 SpeechSynthesis，同步调用不走异步
-            synthSpeak(text);
-        } else {
-            // 其他浏览器：先试 Audio，若创建失败则用 synth
-            if (!audioSpeak(text)) {
-                synthSpeak(text);
-            }
-        }
-    }
-
-    // 解锁：微信 WeixinJSBridge + 通用交互解锁
-    function unlockAudio() {
-        // 触发一次空的 synth 来预热
-        const synth = window.speechSynthesis;
-        if (synth) {
-            synth.cancel();
-            const u = new SpeechSynthesisUtterance('');
-            u.volume = 0;
-            synth.speak(u);
-        }
-        // 同时预热 Audio
-        try {
-            if (!_audio) _audio = new Audio();
-            _audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-            _audio.play().then(() => _audio.pause()).catch(() => {});
-        } catch (e) {}
-    }
-
-    if (isWeChat) {
-        if (typeof WeixinJSBridge !== 'undefined') {
-            WeixinJSBridge.invoke('getNetworkType', {}, unlockAudio);
-        } else {
-            document.addEventListener('WeixinJSBridgeReady', function () {
-                WeixinJSBridge.invoke('getNetworkType', {}, unlockAudio);
-            }, false);
-        }
-    }
-    ['touchstart', 'click'].forEach(evt => {
-        document.addEventListener(evt, unlockAudio, { once: true, passive: true });
-    });
 
     // ===================== 鼓励语 =====================
     const cheersCorrect = [
