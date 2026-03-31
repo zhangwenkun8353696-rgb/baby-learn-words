@@ -383,9 +383,6 @@
 </head>
 <body class="mode-learn">
 
-<!-- 预埋 audio 标签（微信兼容关键） -->
-<audio id="ttsAudio" preload="auto" playsinline webkit-playsinline></audio>
-
 <!-- 连击 -->
 <div class="combo-float" id="comboBadge">🔥 连对 3 个!</div>
 
@@ -521,64 +518,207 @@
     let badges = [];
     let gameAnswered = false;
 
-    // ===================== 语音引擎（参考 elsa-math-game，全平台兼容） =====================
+    // ===================== 语音引擎（完全参照 elsa-math-game 架构） =====================
     //
-    // 核心方案：使用页面内 <audio> 标签 + 有道 TTS
-    // 为什么能在微信工作：
-    //   1. <audio> 标签已在 DOM 中，不是动态 new Audio()
-    //   2. 用户首次点击时通过 audio.play() 解锁
-    //   3. 后续所有播放复用同一个 <audio> 标签
-    // 兜底：SpeechSynthesis（PC浏览器等）
+    // 三级方案：
+    //   A) SpeechSynthesis（PC/Safari/部分安卓原生浏览器）— 只有确认有voices时才用
+    //   B) 在线 TTS API（微信/夸克/华为等不支持SpeechSynthesis的环境）
+    //   C) Web Audio API 提示音（网络不通时兜底）
     //
 
-    const ttsAudio = document.getElementById('ttsAudio');
-    let audioUnlocked = false;
-
-    // 用户首次交互时解锁 audio 播放权限
-    function unlockAudioPlayback() {
-        if (audioUnlocked) return;
-        audioUnlocked = true;
-        // 播放一段空白音频来解锁
-        ttsAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-        ttsAudio.play().then(() => { ttsAudio.pause(); }).catch(() => {});
-        // 同时预热 SpeechSynthesis
-        if (window.speechSynthesis) {
-            const u = new SpeechSynthesisUtterance('');
-            u.volume = 0;
-            u.lang = 'zh-CN';
-            try { speechSynthesis.speak(u); } catch(e) {}
-        }
+    // --- 音效系统（Web Audio API，用于兜底提示音）---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+    function ensureAudio() {
+        if (!audioCtx && AudioCtx) audioCtx = new AudioCtx();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }
-    ['touchstart', 'click'].forEach(e => {
-        document.addEventListener(e, unlockAudioPlayback, { once: true, passive: true });
+    function playTone(freq, duration, type, vol) {
+        ensureAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol || 0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+    function playChime() {
+        ensureAudio();
+        playTone(880, 0.15, 'sine', 0.08);
+        setTimeout(() => playTone(1100, 0.2, 'sine', 0.06), 100);
+    }
+
+    // --- SpeechSynthesis 检测 ---
+    let ttsVoice = null;
+    let ttsAvailable = false;
+    let ttsChecked = false;
+    let ttsUnlocked = false;
+
+    function initTTS() {
+        if (!window.speechSynthesis) return;
+        const loadVoices = () => {
+            const voices = speechSynthesis.getVoices();
+            if (voices.length === 0) return;
+            const preferred = ['Xiaoxiao', 'Xiaoyi', 'Meijia', 'Ting-Ting', 'TingTing',
+                               'Yaoyao', 'Huihui', 'Lili', 'Female', 'female'];
+            for (const name of preferred) {
+                const found = voices.find(v => v.lang.startsWith('zh') && v.name.includes(name));
+                if (found) { ttsVoice = found; break; }
+            }
+            if (!ttsVoice) {
+                ttsVoice = voices.find(v => v.lang === 'zh-CN') ||
+                           voices.find(v => v.lang.startsWith('zh')) || null;
+            }
+            if (ttsVoice) ttsAvailable = true;
+        };
+        loadVoices();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+        setTimeout(loadVoices, 500);
+        setTimeout(loadVoices, 1500);
+    }
+    initTTS();
+
+    function checkTTSAvailable() {
+        if (ttsChecked) return ttsAvailable;
+        if (!window.speechSynthesis) { ttsChecked = true; return false; }
+        try {
+            const voices = speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                ttsAvailable = true;
+                if (!ttsVoice) {
+                    ttsVoice = voices.find(v => v.lang === 'zh-CN') ||
+                               voices.find(v => v.lang.startsWith('zh')) || null;
+                }
+            }
+        } catch(e) {}
+        ttsChecked = true;
+        return ttsAvailable;
+    }
+
+    function unlockTTS() {
+        if (ttsUnlocked || !window.speechSynthesis) return;
+        ttsUnlocked = true;
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        u.lang = 'zh-CN';
+        try { speechSynthesis.speak(u); } catch(e) {}
+        setTimeout(() => {
+            const voices = speechSynthesis.getVoices();
+            if (voices.length > 0 && !ttsVoice) {
+                ttsVoice = voices.find(v => v.lang === 'zh-CN') ||
+                           voices.find(v => v.lang.startsWith('zh')) || null;
+                if (ttsVoice) ttsAvailable = true;
+            }
+        }, 300);
+    }
+
+    // --- 在线 TTS API（微信/夸克等走这个，和 elsa-math-game 完全一致）---
+    const ttsApiBase = 'https://textreadtts.com/tts/convert?accessKey=FREE&language=chinese&speaker=speaker1&text=';
+    const audioCache = {};
+
+    // 预加载单个字的语音（只获取URL不播放）
+    function preloadTTS(text) {
+        if (audioCache[text]) return Promise.resolve();
+        const url = ttsApiBase + encodeURIComponent(text);
+        return fetch(url).then(r => r.json()).then(data => {
+            if (data.code === 0 && data.audio) {
+                audioCache[text] = data.audio;
+            }
+        }).catch(() => {});
+    }
+
+    // 预加载前20个常用字（页面加载后静默执行）
+    function preloadCommonWords() {
+        let idx = 0;
+        function loadNext() {
+            if (idx >= Math.min(20, words.length)) return;
+            preloadTTS(words[idx].hanzi).then(() => { idx++; setTimeout(loadNext, 100); });
+        }
+        loadNext();
+    }
+
+    function playOnlineTTS(text) {
+        if (audioCache[text]) {
+            // 缓存命中，直接播放
+            try {
+                const audio = new Audio(audioCache[text]);
+                audio.onerror = () => playChime();
+                audio.play().catch(() => playChime());
+            } catch(e) { playChime(); }
+            return;
+        }
+
+        // 缓存未命中，实时请求
+        const url = ttsApiBase + encodeURIComponent(text);
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.code === 0 && data.audio) {
+                    audioCache[text] = data.audio;
+                    const audio = new Audio(data.audio);
+                    audio.onerror = () => playChime();
+                    audio.play().catch(() => playChime());
+                } else {
+                    playChime();
+                }
+            })
+            .catch(() => playChime());
+    }
+
+    // --- 首次交互解锁 ---
+    let _firstInteraction = false;
+    function onFirstInteraction() {
+        if (_firstInteraction) return;
+        _firstInteraction = true;
+        // 解锁 AudioContext
+        ensureAudio();
+        // 解锁 SpeechSynthesis
+        unlockTTS();
+        // 解锁 Audio（播放一段空白）
+        try {
+            const a = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+            a.play().then(() => a.pause()).catch(() => {});
+        } catch(e) {}
+    }
+    ['touchstart', 'touchend', 'click'].forEach(evt => {
+        document.addEventListener(evt, onFirstInteraction, { once: false, passive: true });
     });
 
-    // 播放语音
+    // --- 核心语音函数 ---
     function speakWord(text) {
-        // 方案1：用 <audio> 标签播放有道 TTS
-        try {
-            const url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=0';
-            ttsAudio.pause();
-            ttsAudio.currentTime = 0;
-            ttsAudio.src = url;
-            ttsAudio.play().catch(() => {
-                // 方案2：SpeechSynthesis（同步调用，在手势栈内）
-                synthSpeak(text);
-            });
-        } catch(e) {
-            synthSpeak(text);
-        }
-    }
+        checkTTSAvailable();
 
-    function synthSpeak(text) {
-        const synth = window.speechSynthesis;
-        if (!synth) return;
-        synth.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'zh-CN';
-        u.rate = 0.78;
-        u.pitch = 1.3;
-        synth.speak(u);
+        if (ttsAvailable && window.speechSynthesis) {
+            // 方案A：原生 SpeechSynthesis（PC/Safari等有voices的环境）
+            if (!ttsUnlocked) unlockTTS();
+            speechSynthesis.cancel();
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (ttsVoice) utterance.voice = ttsVoice;
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.78;
+                utterance.pitch = 1.3;
+                utterance.volume = 1.0;
+                speechSynthesis.speak(utterance);
+                // 防止 speech 卡住
+                const ri = setInterval(() => {
+                    if (speechSynthesis.paused) speechSynthesis.resume();
+                }, 200);
+                utterance.onend = () => clearInterval(ri);
+                utterance.onerror = () => clearInterval(ri);
+                setTimeout(() => clearInterval(ri), 5000);
+            }, 50);
+        } else {
+            // 方案B：在线 TTS（微信/夸克/华为等）
+            playOnlineTTS(text);
+        }
     }
 
     // ===================== 鼓励语 =====================
@@ -846,6 +986,11 @@
 
     // ===================== 初始化 =====================
     updateLearn();
+    // 如果 SpeechSynthesis 不可用（微信等），预加载前20个字的音频
+    setTimeout(() => {
+        checkTTSAvailable();
+        if (!ttsAvailable) preloadCommonWords();
+    }, 2000);
 </script>
 </body>
 </html>
